@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Iterable, List, Optional, TypedDict
+from typing import TypedDict
 
 import datasets as ds
 import pandas as pd
@@ -43,7 +43,7 @@ class URLs(TypedDict):
     ver2: str
 
 
-_URLS = {
+_URLS: URLs = {
     "ver1": "https://raw.githubusercontent.com/ids-cv/wrime/master/wrime-ver1.tsv",
     "ver2": "https://raw.githubusercontent.com/ids-cv/wrime/master/wrime-ver2.tsv",
 }
@@ -63,7 +63,9 @@ def _fix_typo_in_dataset(df: pd.DataFrame) -> pd.DataFrame:
 def _load_tsv(tsv_path: str) -> pd.DataFrame:
     logger.info(f"Load TSV file from {tsv_path}")
     df = pd.read_csv(tsv_path, delimiter="\t")
+
     df = _fix_typo_in_dataset(df)
+
     return df
 
 
@@ -177,6 +179,7 @@ class WrimeDataset(ds.GeneratorBasedBuilder):
     ):
         for i in range(len(df)):
             row_df = df.iloc[i]
+            breakpoint()
 
             example_dict = {
                 "sentence": row_df["Sentence"],
