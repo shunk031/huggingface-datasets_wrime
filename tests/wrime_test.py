@@ -20,10 +20,9 @@ def test_load_dataset(
     expected_train_num_rows: int,
     expected_val_num_rows: int,
     expected_test_num_rows: int,
-):
+) -> None:
 
     dataset = ds.load_dataset(path=dataset_path, name=dataset_name)
-    breakpoint()
 
     assert dataset["train"].num_rows == expected_train_num_rows  # type: ignore
     assert dataset["validation"].num_rows == expected_val_num_rows  # type: ignore
