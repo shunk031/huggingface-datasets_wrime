@@ -1,5 +1,5 @@
 import logging
-from typing import TypedDict
+from typing import Final, List, TypedDict
 
 import datasets as ds
 import pandas as pd
@@ -60,13 +60,40 @@ def _fix_typo_in_dataset(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _convert_column_name(df: pd.DataFrame) -> pd.DataFrame:
+
+    # ['Sentence', 'UserID', 'Datetime', 'Train/Dev/Test', 'Writer_Joy', ...]
+    # -> ['sentence', 'userid', 'datetime', 'train/dev/test', 'writer_joy', ...]
+    df.columns = df.columns.str.lower()
+
+    # ['avg. readers_joy', 'avg. readers_sadness', 'avg. readers_anticipation', ...]
+    # -> ['avg_readers_joy', 'avg_readers_sadness', 'avg_readers_anticipation', ...]
+    df.columns = df.columns.str.replace(". ", "_")
+
+    return df
+
+
 def _load_tsv(tsv_path: str) -> pd.DataFrame:
     logger.info(f"Load TSV file from {tsv_path}")
     df = pd.read_csv(tsv_path, delimiter="\t")
 
+    # some preprocessing
     df = _fix_typo_in_dataset(df)
+    df = _convert_column_name(df)
 
     return df
+
+
+EIGHT_EMOTIONS: Final[List[str]] = [
+    "joy",
+    "sadness",
+    "anticipation",
+    "surprise",
+    "anger",
+    "fear",
+    "disgust",
+    "trust",
+]
 
 
 class WrimeDataset(ds.GeneratorBasedBuilder):
@@ -83,64 +110,18 @@ class WrimeDataset(ds.GeneratorBasedBuilder):
         ),
     ]
 
-    def _info(self) -> ds.DatasetInfo:
-        features = ds.Features(
-            {
-                "sentence": ds.Value("string"),
-                "user_id": ds.Value("string"),
-                "datetime": ds.Value("string"),
-                "writer": {
-                    "joy": ds.Value("uint8"),
-                    "sadness": ds.Value("uint8"),
-                    "anticipation": ds.Value("uint8"),
-                    "surprise": ds.Value("uint8"),
-                    "anger": ds.Value("uint8"),
-                    "fear": ds.Value("uint8"),
-                    "disgust": ds.Value("uint8"),
-                    "trust": ds.Value("uint8"),
-                },
-                "reader1": {
-                    "joy": ds.Value("uint8"),
-                    "sadness": ds.Value("uint8"),
-                    "anticipation": ds.Value("uint8"),
-                    "surprise": ds.Value("uint8"),
-                    "anger": ds.Value("uint8"),
-                    "fear": ds.Value("uint8"),
-                    "disgust": ds.Value("uint8"),
-                    "trust": ds.Value("uint8"),
-                },
-                "reader2": {
-                    "joy": ds.Value("uint8"),
-                    "sadness": ds.Value("uint8"),
-                    "anticipation": ds.Value("uint8"),
-                    "surprise": ds.Value("uint8"),
-                    "anger": ds.Value("uint8"),
-                    "fear": ds.Value("uint8"),
-                    "disgust": ds.Value("uint8"),
-                    "trust": ds.Value("uint8"),
-                },
-                "reader3": {
-                    "joy": ds.Value("uint8"),
-                    "sadness": ds.Value("uint8"),
-                    "anticipation": ds.Value("uint8"),
-                    "surprise": ds.Value("uint8"),
-                    "anger": ds.Value("uint8"),
-                    "fear": ds.Value("uint8"),
-                    "disgust": ds.Value("uint8"),
-                    "trust": ds.Value("uint8"),
-                },
-                "avg_readers": {
-                    "joy": ds.Value("uint8"),
-                    "sadness": ds.Value("uint8"),
-                    "anticipation": ds.Value("uint8"),
-                    "surprise": ds.Value("uint8"),
-                    "anger": ds.Value("uint8"),
-                    "fear": ds.Value("uint8"),
-                    "disgust": ds.Value("uint8"),
-                    "trust": ds.Value("uint8"),
-                },
-            }
-        )
+    def __info(self, emotions: List[str]) -> ds.DatasetInfo:
+        features_dict = {
+            "sentence": ds.Value("string"),
+            "user_id": ds.Value("string"),
+            "datetime": ds.Value("string"),
+        }
+
+        readers = [f"reader{i}" for i in range(1, 4)] + ["avg_readers"]
+        for k in ["writer"] + readers:
+            features_dict[k] = {emotion: ds.Value("int8") for emotion in emotions}  # type: ignore
+        features = ds.Features(features_dict)
+
         return ds.DatasetInfo(
             description=_DESCRIPTION,
             features=features,
@@ -149,14 +130,27 @@ class WrimeDataset(ds.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
+    def _info(self) -> ds.DatasetInfo:
+
+        if self.config.version.major == 1:  # type: ignore
+            # Ver.1: 80人の筆者から収集した43,200件の投稿に感情強度をラベル付け
+            return self.__info(emotions=EIGHT_EMOTIONS)
+
+        elif self.config.version.major == 2:  # type: ignore
+            # Ver.2: 60人の筆者から収集した35,000件の投稿（Ver.1のサブセット）に感情極性を追加でラベル付け
+            return self.__info(emotions=EIGHT_EMOTIONS + ["sentiment"])
+
+        else:
+            raise ValueError(f"Invalid dataset version: {self.config.version}")
+
     def _split_generators(self, dl_manager: ds.DownloadManager):
         wrime_datasets = dl_manager.download_and_extract(_URLS)
         major_version_name = f"ver{self.config.version.major}"  # type: ignore
 
         wrime_df = _load_tsv(tsv_path=wrime_datasets[major_version_name])
-        tng_wrime_df = wrime_df[wrime_df["Train/Dev/Test"] == "train"]
-        dev_wrime_df = wrime_df[wrime_df["Train/Dev/Test"] == "dev"]
-        tst_wrime_df = wrime_df[wrime_df["Train/Dev/Test"] == "test"]
+        tng_wrime_df = wrime_df[wrime_df["train/dev/test"] == "train"]
+        dev_wrime_df = wrime_df[wrime_df["train/dev/test"] == "dev"]
+        tst_wrime_df = wrime_df[wrime_df["train/dev/test"] == "test"]
 
         return [
             ds.SplitGenerator(
@@ -173,51 +167,34 @@ class WrimeDataset(ds.GeneratorBasedBuilder):
             ),
         ]
 
-    def _generate_examples(  # type: ignore[override]
-        self,
-        df: pd.DataFrame,
-    ):
+    def __generate_examples(self, df: pd.DataFrame, emotions: List[str]):
         for i in range(len(df)):
             row_df = df.iloc[i]
 
             example_dict = {
-                "sentence": row_df["Sentence"],
-                "user_id": row_df["UserID"],
-                "datetime": row_df["Datetime"],
+                "sentence": row_df["sentence"],
+                "user_id": row_df["userid"],
+                "datetime": row_df["datetime"],
             }
 
-            example_dict["writer"] = {
-                "joy": row_df["Writer_Joy"],
-                "sadness": row_df["Writer_Sadness"],
-                "anticipation": row_df["Writer_Anticipation"],
-                "surprise": row_df["Writer_Surprise"],
-                "anger": row_df["Writer_Anger"],
-                "fear": row_df["Writer_Fear"],
-                "disgust": row_df["Writer_Disgust"],
-                "trust": row_df["Writer_Trust"],
-            }
-
-            for reader_num in range(1, 4):
-                example_dict[f"reader{reader_num}"] = {
-                    "joy": row_df[f"Reader{reader_num}_Joy"],
-                    "sadness": row_df[f"Reader{reader_num}_Sadness"],
-                    "anticipation": row_df[f"Reader{reader_num}_Anticipation"],
-                    "surprise": row_df[f"Reader{reader_num}_Surprise"],
-                    "anger": row_df[f"Reader{reader_num}_Anger"],
-                    "fear": row_df[f"Reader{reader_num}_Fear"],
-                    "disgust": row_df[f"Reader{reader_num}_Disgust"],
-                    "trust": row_df[f"Reader{reader_num}_Trust"],
+            readers = [f"reader{i}" for i in range(1, 4)] + ["avg_readers"]
+            for k in ["writer"] + readers:
+                example_dict[k] = {
+                    emotion: row_df[f"{k}_{emotion}"] for emotion in emotions
                 }
-
-            example_dict["avg_readers"] = {
-                "joy": row_df["Avg. Readers_Joy"],
-                "sadness": row_df["Avg. Readers_Sadness"],
-                "anticipation": row_df["Avg. Readers_Anticipation"],
-                "surprise": row_df["Avg. Readers_Surprise"],
-                "anger": row_df["Avg. Readers_Anger"],
-                "fear": row_df["Avg. Readers_Fear"],
-                "disgust": row_df["Avg. Readers_Disgust"],
-                "trust": row_df["Avg. Readers_Trust"],
-            }
-
             yield i, example_dict
+
+    def _generate_examples(self, df: pd.DataFrame):  # type: ignore[override]
+
+        if self.config.version.major == 1:  # type: ignore
+            yield from self.__generate_examples(
+                df,
+                emotions=EIGHT_EMOTIONS,
+            )
+        elif self.config.version.major == 2:  # type: ignore
+            yield from self.__generate_examples(
+                df,
+                emotions=EIGHT_EMOTIONS + ["sentiment"],
+            )
+        else:
+            raise ValueError(f"Invalid dataset version: {self.config.version}")
