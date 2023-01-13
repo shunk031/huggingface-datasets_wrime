@@ -24,6 +24,26 @@ _CITATION = """\
     pages = "2095--2104",
     abstract = "We annotate 17,000 SNS posts with both the writer{'}s subjective emotional intensity and the reader{'}s objective one to construct a Japanese emotion analysis dataset. In this study, we explore the difference between the emotional intensity of the writer and that of the readers with this dataset. We found that the reader cannot fully detect the emotions of the writer, especially anger and trust. In addition, experimental results in estimating the emotional intensity show that it is more difficult to estimate the writer{'}s subjective labels than the readers{'}. The large gap between the subjective and objective emotions imply the complexity of the mapping from a post to the subjective emotion intensities, which also leads to a lower performance with machine learning models.",
 }
+
+@inproceedings{suzuki-etal-2022-japanese,
+    title = "A {J}apanese Dataset for Subjective and Objective Sentiment Polarity Classification in Micro Blog Domain",
+    author = "Suzuki, Haruya  and
+      Miyauchi, Yuto  and
+      Akiyama, Kazuki  and
+      Kajiwara, Tomoyuki  and
+      Ninomiya, Takashi  and
+      Takemura, Noriko  and
+      Nakashima, Yuta  and
+      Nagahara, Hajime",
+    booktitle = "Proceedings of the Thirteenth Language Resources and Evaluation Conference",
+    month = jun,
+    year = "2022",
+    address = "Marseille, France",
+    publisher = "European Language Resources Association",
+    url = "https://aclanthology.org/2022.lrec-1.759",
+    pages = "7022--7028",
+    abstract = "We annotate 35,000 SNS posts with both the writer{'}s subjective sentiment polarity labels and the reader{'}s objective ones to construct a Japanese sentiment analysis dataset. Our dataset includes intensity labels (\textit{none}, \textit{weak}, \textit{medium}, and \textit{strong}) for each of the eight basic emotions by Plutchik (\textit{joy}, \textit{sadness}, \textit{anticipation}, \textit{surprise}, \textit{anger}, \textit{fear}, \textit{disgust}, and \textit{trust}) as well as sentiment polarity labels (\textit{strong positive}, \textit{positive}, \textit{neutral}, \textit{negative}, and \textit{strong negative}). Previous studies on emotion analysis have studied the analysis of basic emotions and sentiment polarity independently. In other words, there are few corpora that are annotated with both basic emotions and sentiment polarity. Our dataset is the first large-scale corpus to annotate both of these emotion labels, and from both the writer{'}s and reader{'}s perspectives. In this paper, we analyze the relationship between basic emotion intensity and sentiment polarity on our dataset and report the results of benchmarking sentiment polarity classification.",
+}
 """
 
 _DESCRIPTION = """\
