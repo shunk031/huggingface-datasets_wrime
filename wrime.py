@@ -69,17 +69,6 @@ _URLS: URLs = {
 }
 
 
-def _fix_typo_in_dataset(df: pd.DataFrame) -> pd.DataFrame:
-    # ref. https://github.com/ids-cv/wrime/pull/4
-    df = df.rename(
-        columns={
-            "Reader2_Saddness": "Reader2_Sadness",
-            "Reader3_Saddness": "Reader3_Sadness",
-        }
-    )
-    return df
-
-
 def _convert_column_name(df: pd.DataFrame) -> pd.DataFrame:
 
     # ['Sentence', 'UserID', 'Datetime', 'Train/Dev/Test', 'Writer_Joy', ...]
@@ -98,7 +87,6 @@ def _load_tsv(tsv_path: str) -> pd.DataFrame:
     df = pd.read_csv(tsv_path, delimiter="\t")
 
     # some preprocessing
-    df = _fix_typo_in_dataset(df)
     df = _convert_column_name(df)
 
     return df
